@@ -1,0 +1,51 @@
+name: Lint, Audit & Deploy Static Website
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install HTMLHint & Lighthouse CI
+      run: |
+        npm install -g htmlhint @lhci/cli
+
+    - name: Run HTMLHint
+      run: |
+        htmlhint "**/*.html"
+
+    - name: Start Local Server (for Lighthouse CI)
+      run: |
+        npx http-server -p 8080 &
+        sleep 5  # Give server time to start
+
+    - name: Run Lighthouse CI
+      run: |
+        lhci collect --url=http://localhost:8080 --preset=desktop --numberOfRuns=1 || echo "Lighthouse failed but continuing..."
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Sync files to S3
+      run: |
+        aws s3 sync . s3://${{ secrets.S3_BUCKET_NAME }} --delete --exclude ".git/*" --exclude ".github/*"
+
+    - name: Set public read access (optional)
+      run: |
+        aws s3 website s3://${{ secrets.S3_BUCKET_NAME }} --index-document index.html
