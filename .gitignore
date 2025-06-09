@@ -1,0 +1,15 @@
+
+# Ignore Node.js and testing tools
+node_modules/
+*.log
+
+# Ignore Terraform local state and backups
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Ignore environment or secrets files (if any)
+.env
+
+# Ignore system files
+.DS_Store
